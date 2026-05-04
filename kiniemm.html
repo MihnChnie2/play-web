@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Message Cloud 3D - Mapstudy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --pink: #ff2d78;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Orbitron', 'Segoe UI', system-ui, sans-serif;
+        }
+
+        #c {
+            display: block;
+            position: fixed;
+            inset: 0;
+        }
+
+
+        /* Click-to-unmute overlay */
+        #unmute-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            background: rgba(0, 0, 0, .55);
+            backdrop-filter: blur(4px);
+            cursor: pointer;
+            transition: opacity .4s;
+        }
+
+        #unmute-overlay.gone {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .unmute-icon {
+            font-size: 52px;
+            animation: pulse-big 1.4s ease-in-out infinite;
+        }
+
+        @keyframes pulse-big {
+
+            0%,
+            100% {
+                transform: scale(1)
+            }
+
+            50% {
+                transform: scale(1.15)
+            }
+        }
+
+        .unmute-text {
+            color: var(--pink);
+            font-size: 13px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px var(--pink);
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        .unmute-sub {
+            color: rgba(255, 128, 171, .6);
+            font-size: 9px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        /* Loading */
+        #loading {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            transition: opacity .6s;
+        }
+
+        #loading p {
+            color: var(--pink);
+            font-size: 12px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px var(--pink);
+            animation: blink 1.2s ease-in-out infinite;
+        }
+
+        .ring {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: 3px solid #1a1a1a;
+            border-top-color: var(--pink);
+            animation: spin .85s linear infinite;
+            box-shadow: 0 0 14px var(--pink);
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: .35
+            }
+
+            50% {
+                opacity: 1
+            }
+        }
+
+        /* Title / Hint */
+        #title {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(9px, 1.3vw, 13px);
+            letter-spacing: 6px;
+            color: var(--pink);
+            text-shadow: 0 0 18px var(--pink), 0 0 40px rgba(255, 0, 80, .4);
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        #hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            letter-spacing: 3px;
+            color: var(--pink);
+            opacity: .38;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        /* Music bar – bottom center */
+        #music-bar {
+            position: fixed;
+            bottom: 44px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, .7);
+            border: 1px solid rgba(255, 45, 120, .3);
+            border-radius: 999px;
+            padding: 6px 14px 6px 8px;
+            backdrop-filter: blur(10px);
+            z-index: 15;
+            transition: opacity .3s;
+        }
+
+        #music-bar.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Vinyl record spinning icon */
+        #vinyl {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: radial-gradient(circle at 50%, #1a1a1a 28%, #ff2d78 30%, #ff2d78 36%, #111 38%, #111 60%, #ff2d78 62%, #ff2d78 65%, #111 67%);
+            border: 2px solid rgba(255, 45, 120, .4);
+            box-shadow: 0 0 10px rgba(255, 45, 120, .3);
+        }
+
+        #vinyl.playing {
+            animation: spin-vinyl 2s linear infinite;
+        }
+
+        @keyframes spin-vinyl {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #music-title {
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: #ff80ab;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #music-title.no-music {
+            color: rgba(255, 128, 171, .4);
+        }
+
+        .music-ctrl-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--pink);
+            font-size: 14px;
+            padding: 2px 4px;
+            line-height: 1;
+            transition: transform .15s, color .15s;
+        }
+
+        .music-ctrl-btn:hover {
+            transform: scale(1.2);
+            color: #fff;
+        }
+
+        /* Volume mini slider */
+        #vol-slider {
+            -webkit-appearance: none;
+            width: 60px;
+            height: 2px;
+            border-radius: 1px;
+            background: rgba(255, 45, 120, .3);
+            outline: none;
+            cursor: pointer;
+        }
+
+        #vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--pink);
+            box-shadow: 0 0 6px var(--pink);
+        }
+
+        #vol-slider::-moz-range-thumb {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--pink);
+            border: none;
+        }
+
+        /* Toggle button */
+        #btn-toggle {
+            position: fixed;
+            top: 68px;
+            right: 18px;
+            z-index: 30;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 45, 120, .5);
+            background: rgba(0, 0, 0, .75);
+            color: var(--pink);
+            font-size: 19px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 14px rgba(255, 45, 120, .2);
+            transition: box-shadow .2s, transform .2s;
+        }
+
+        #btn-toggle:hover {
+            box-shadow: 0 0 22px var(--pink);
+            transform: scale(1.1);
+        }
+
+        /* Panel */
+        #panel {
+            position: fixed;
+            top: 116px;
+            right: 18px;
+            z-index: 20;
+            width: 250px;
+            background: rgba(0, 0, 0, .85);
+            border: 1px solid rgba(255, 45, 120, .3);
+            border-radius: 16px;
+            backdrop-filter: blur(14px);
+            box-shadow: 0 0 28px rgba(255, 45, 120, .1), inset 0 0 14px rgba(255, 45, 120, .04);
+            display: flex;
+            flex-direction: column;
+            transition: opacity .3s, transform .3s;
+            overflow: hidden;
+        }
+
+        #panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-8px);
+        }
+
+        /* Tab bar */
+        .tab-bar {
+            display: flex;
+            border-bottom: 1px solid rgba(255, 45, 120, .2);
+            flex-shrink: 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 0;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: rgba(255, 128, 171, .45);
+            font-family: inherit;
+            font-size: 7px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: color .2s, border-color .2s;
+        }
+
+        .tab-btn.active {
+            color: var(--pink);
+            border-bottom-color: var(--pink);
+        }
+
+        .tab-btn:hover {
+            color: #ff80ab;
+        }
+
+        .tab-pane {
+            display: none;
+            padding: 16px 16px 14px;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .tab-pane.active {
+            display: flex;
+        }
+
+        /* Settings controls */
+        .ctrl {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .ctrl-lbl {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: #ff80ab;
+            text-transform: uppercase;
+        }
+
+        .ctrl-lbl em {
+            font-style: normal;
+            color: #fff;
+            font-size: 11px;
+            min-width: 28px;
+            text-align: right;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 3px;
+            border-radius: 2px;
+            background: rgba(255, 45, 120, .2);
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--pink);
+            box-shadow: 0 0 9px var(--pink);
+            transition: transform .15s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.35);
+        }
+
+        input[type=range]::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--pink);
+            border: none;
+            box-shadow: 0 0 9px var(--pink);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .p-btn {
+            flex: 1;
+            padding: 7px 0;
+            background: transparent;
+            border: 1px solid rgba(255, 45, 120, .4);
+            border-radius: 8px;
+            color: var(--pink);
+            font-family: inherit;
+            font-size: 8px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background .2s, box-shadow .2s;
+        }
+
+        .p-btn:hover {
+            background: rgba(255, 45, 120, .15);
+            box-shadow: 0 0 12px rgba(255, 45, 120, .3);
+        }
+
+        .p-btn.active {
+            background: rgba(255, 45, 120, .25);
+        }
+
+        /* Music tab styles */
+        .section-label {
+            font-size: 8px;
+            letter-spacing: 3px;
+            color: var(--pink);
+            text-transform: uppercase;
+            text-shadow: 0 0 8px var(--pink);
+        }
+
+        .url-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .url-input {
+            flex: 1;
+            background: rgba(255, 45, 120, .06);
+            border: 1px solid rgba(255, 45, 120, .3);
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 10px;
+            padding: 7px 10px;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            min-width: 0;
+        }
+
+        .url-input::placeholder {
+            color: rgba(255, 128, 171, .35);
+            font-size: 9px;
+        }
+
+        .url-input:focus {
+            border-color: var(--pink);
+            box-shadow: 0 0 10px rgba(255, 45, 120, .2);
+        }
+
+        .url-load-btn {
+            flex-shrink: 0;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 45, 120, .4);
+            background: transparent;
+            color: var(--pink);
+            font-family: inherit;
+            font-size: 8px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background .2s, box-shadow .2s;
+        }
+
+        .url-load-btn:hover {
+            background: rgba(255, 45, 120, .2);
+            box-shadow: 0 0 10px rgba(255, 45, 120, .3);
+        }
+
+        .music-status {
+            font-size: 9px;
+            color: rgba(255, 128, 171, .6);
+            letter-spacing: 1px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.5;
+            min-height: 14px;
+        }
+
+        .music-status.ok {
+            color: #80ffb3;
+        }
+
+        .music-status.err {
+            color: #ff6b6b;
+        }
+
+        /* Volume in panel */
+        .vol-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .vol-icon {
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .vol-panel-slider {
+            -webkit-appearance: none;
+            flex: 1;
+            height: 3px;
+            border-radius: 2px;
+            background: rgba(255, 45, 120, .2);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .vol-panel-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--pink);
+            box-shadow: 0 0 8px var(--pink);
+        }
+
+        .vol-panel-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--pink);
+            border: none;
+        }
+
+        .music-hint {
+            font-size: 8px;
+            color: rgba(255, 128, 171, .4);
+            letter-spacing: 1px;
+            line-height: 1.6;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            border-top: 1px solid rgba(255, 45, 120, .12);
+            padding-top: 10px;
+        }
+
+        .music-hint b {
+            color: rgba(255, 128, 171, .7);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading">
+        <div class="ring"></div>
+        <p>Dang khoi tao...</p>
+    </div>
+    <canvas id="c"></canvas>
+
+    <!-- Click-to-unmute overlay (hien khi browser cho phep muted autoplay) -->
+    <div id="unmute-overlay">
+        <div class="unmute-icon">&#127925;</div>
+        <div class="unmute-text">Bam de bat dau<br>trai nghiem am nhac</div>
+        <div class="unmute-sub">Click anywhere to continue</div>
+    </div>
+
+    <div id="title">&#10022; MAPSTUDY MESSAGE CLOUD &#10022;</div>
+    <div id="hint">Di chuyen chuot de xoay &middot; Scroll de zoom</div>
+
+    <!-- Music bar bottom -->
+    <div id="music-bar" class="hidden">
+        <div id="vinyl"></div>
+        <span id="music-title" class="no-music">Chua co nhac</span>
+        <button class="music-ctrl-btn" id="bar-playpause" title="Play/Pause">&#9654;</button>
+        <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="0.7" title="Am luong" />
+    </div>
+
+    <button id="btn-toggle" title="Mo/Dong panel">&#9881;</button>
+
+    <div id="panel">
+        <!-- Tab bar -->
+        <div class="tab-bar">
+            <button class="tab-btn active" data-tab="tab-set">&#9881; Cai dat</button>
+            <button class="tab-btn" data-tab="tab-music">&#9835; Nhac</button>
+        </div>
+
+        <!-- TAB: Cai dat -->
+        <div class="tab-pane active" id="tab-set">
+            <div class="ctrl">
+                <div class="ctrl-lbl">Co chu <em id="v-size">34</em></div>
+                <input type="range" id="sl-size" min="16" max="72" value="34" step="2" />
+            </div>
+            <div class="ctrl">
+                <div class="ctrl-lbl">Toc do xoay <em id="v-speed">5</em></div>
+                <input type="range" id="sl-speed" min="0" max="20" value="5" step="1" />
+            </div>
+            <div class="ctrl">
+                <div class="ctrl-lbl">Nhay chuot <em id="v-mouse">5</em></div>
+                <input type="range" id="sl-mouse" min="0" max="10" value="5" step="1" />
+            </div>
+            <div class="btn-row">
+                <button class="p-btn" id="btn-pause">&#9208; Dung</button>
+                <button class="p-btn" id="btn-reset">&#8635; Reset</button>
+            </div>
+        </div>
+
+        <!-- TAB: Nhac nen -->
+        <div class="tab-pane" id="tab-music">
+            <div class="section-label">&#9835; Nhacnen</div>
+
+            <!-- URL input -->
+            <div class="url-row">
+                <input class="url-input" id="music-url" type="text" placeholder="Dan link MP3 vao day..." />
+                <button class="url-load-btn" id="btn-load-music">Tai</button>
+            </div>
+
+            <!-- Status -->
+            <div class="music-status" id="music-status">Chua co nhac. Dan link MP3 va bam Tai.</div>
+
+            <!-- Volume -->
+            <div class="ctrl">
+                <div class="ctrl-lbl">Am luong <em id="v-vol">70</em>%</div>
+                <div class="vol-row">
+                    <span class="vol-icon">&#128264;</span>
+                    <input class="vol-panel-slider" type="range" id="vol-panel" min="0" max="100" value="70" step="5" />
+                    <span class="vol-icon">&#128266;</span>
+                </div>
+            </div>
+
+            <!-- Play controls -->
+            <div class="btn-row">
+                <button class="p-btn" id="btn-music-play">&#9654; Play</button>
+                <button class="p-btn" id="btn-music-stop">&#9632; Stop</button>
+            </div>
+
+            <!-- Hint -->
+            <div class="music-hint">
+                <b>Link MP3 truc tiep</b> la loai link ket thuc bang .mp3<br>
+                Vi du: https://example.com/song.mp3<br><br>
+                <b>Luu y:</b> Trinh duyet can cho phep audio tu trang web ngoai (CORS). Neu link khong chay duoc, thu
+                dung link MP3 tu host khac.
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio element – dung de phat nhac tu URL -->
+    <audio id="bg-audio" loop preload="auto" muted></audio>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+
+
+        /* =============================================================
+           NHAC MAC DINH – thay link nay bang link MP3 cua ban
+           De trong ('') neu khong muon nhac tu dong
+        ============================================================= */
+        var DEFAULT_MUSIC_URL = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+
+        /* =============================================================
+           MESSAGES
+        ============================================================= */
+        var MESSAGES = [
+            'Cam on thay VNA va team Mapstudy',
+            'Chuc cac ban do NV1!',
+            'Hoc tap cham chi nhe',
+            'Mapstudy - Dong hanh cung uoc mo',
+            'Kien tri la chia khoa thanh cong',
+            'Chuc ban dat diem cao nhat!',
+            'Tu tin buoc vao phong thi nhe',
+            'On luyen moi ngay - Thanh cong moi ngay',
+            'Dung bo cuoc - Thanh cong o phia truoc',
+            'Tri thuc la anh sang',
+            'Co len! Ban lam duoc!',
+            'Chuc ca nha khoe va hoc gioi',
+            'Thay VNA luon dong hanh cung ban',
+            'Moi buoc nho la mot tien bo lon',
+            'Hanh trinh van dam bat dau tu mot buoc',
+            'Tuong lai ruc ro dang cho don ban',
+            'Uoc mo cua ban se thanh su that',
+            'Hay co gang het minh!',
+            'Ban la nguoi tuyet voi!',
+            'Niem tin chinh la suc manh',
+            'Hoc hoi khong bao gio la du',
+            'Moi ngay la mot co hoi moi',
+            'Kho khan chi lam ban manh hon',
+            'Tin vao ban than minh!'
+        ];
+
+        /* =============================================================
+           DIEU KHIEN
+        ============================================================= */
+        var ctrl = { fontSize: 34, rotateSpeed: 0.005, mouseSens: 0.5, paused: false };
+
+        /* =============================================================
+           FONT
+        ============================================================= */
+        var FONT_NAME = 'Orbitron', FONT_FALLBACK = 'Segoe UI,system-ui,sans-serif', fontReady = false;
+        function ensureFont() {
+            return Promise.race([document.fonts.ready, new Promise(function (r) { setTimeout(r, 4000); })])
+                .then(function () { try { fontReady = document.fonts.check('bold 32px "' + FONT_NAME + '"'); } catch (e) { fontReady = false; } })
+                .catch(function () { fontReady = false; });
+        }
+        function fontString(s) { return (fontReady ? 'bold ' + s + 'px "' + FONT_NAME + '", ' : 'bold ' + s + 'px ') + FONT_FALLBACK; }
+
+        /* =============================================================
+           CANVAS TEXTURE
+        ============================================================= */
+        function makeTexture(text, fontSize) {
+            var fStr = fontString(fontSize), pad = Math.ceil(fontSize * .65), glow = Math.ceil(fontSize * .55);
+            var tmp = document.createElement('canvas'); var tc = tmp.getContext('2d'); tc.font = fStr;
+            var cw = Math.max(Math.ceil(tc.measureText(text).width + pad * 2), 4);
+            var ch = Math.max(Math.ceil(fontSize * 1.5 + pad * 2), 4);
+            var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+            var ctx = cv.getContext('2d');
+            ctx.clearRect(0, 0, cw, ch); ctx.font = fStr; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#ff2d78'; ctx.shadowBlur = glow; ctx.fillStyle = '#ff2d78';
+            for (var g = 0; g < 4; g++) ctx.fillText(text, cw / 2, ch / 2);
+            ctx.shadowBlur = 0; ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.93;
+            ctx.fillText(text, cw / 2, ch / 2); ctx.globalAlpha = 1;
+            return { tex: new THREE.CanvasTexture(cv), aspect: cw / ch };
+        }
+
+        /* =============================================================
+           FIBONACCI SPHERE
+        ============================================================= */
+        function fibSphere(n, r) {
+            var pts = [], phi = Math.PI * (3 - Math.sqrt(5));
+            for (var i = 0; i < n; i++) {
+                var y = 1 - (i / (n - 1)) * 2, rr = Math.sqrt(1 - y * y), t = phi * i;
+                pts.push(new THREE.Vector3(Math.cos(t) * rr * r, y * r, Math.sin(t) * rr * r));
+            }
+            return pts;
+        }
+
+        /* =============================================================
+           THREE.JS
+        ============================================================= */
+        var renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000);
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.z = 12;
+        var cloudGroup = new THREE.Group(); scene.add(cloudGroup);
+        var sprites = [];
+        var seeds = MESSAGES.map(function () { return { sizeDelta: Math.floor((Math.random() - .5) * 10), scaleH: 1.5 + Math.random() * .4, phase: Math.random() * Math.PI * 2, breathSpd: .22 + Math.random() * .3 }; });
+
+        function buildSprites() {
+            for (var i = 0; i < sprites.length; i++) { var s = sprites[i]; cloudGroup.remove(s); if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+            sprites.length = 0;
+            var positions = fibSphere(MESSAGES.length, 5.2);
+            for (var j = 0; j < MESSAGES.length; j++) {
+                var seed = seeds[j], fs = Math.max(12, ctrl.fontSize + seed.sizeDelta), result = makeTexture(MESSAGES[j], fs);
+                var mat = new THREE.SpriteMaterial({ map: result.tex, transparent: true, depthWrite: false, opacity: 1 });
+                var sp = new THREE.Sprite(mat);
+                sp.scale.set(seed.scaleH * result.aspect, seed.scaleH, 1);
+                sp.position.copy(positions[j]);
+                sp._phase = seed.phase; sp._breathSpd = seed.breathSpd;
+                cloudGroup.add(sp); sprites.push(sp);
+            }
+        }
+
+        /* Dust */
+        (function () {
+            var N = 500, geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 3);
+            for (var i = 0; i < N; i++) { var r = 2 + Math.random() * 9, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1); pos[i * 3] = r * Math.sin(ph) * Math.cos(th); pos[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th); pos[i * 3 + 2] = r * Math.cos(ph); }
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            cloudGroup.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xff80ab, size: .04, transparent: true, opacity: .5, depthWrite: false, sizeAttenuation: true })));
+        }());
+
+        /* Interaction */
+        var mouse = { x: 0, y: 0 }, lerped = { x: 0, y: 0 };
+        window.addEventListener('mousemove', function (e) { mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = (e.clientY / window.innerHeight) * 2 - 1; });
+        window.addEventListener('touchmove', function (e) { if (!e.touches[0]) return; mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1; mouse.y = (e.touches[0].clientY / window.innerHeight) * 2 - 1; }, { passive: true });
+        window.addEventListener('wheel', function (e) { camera.position.z = Math.max(5, Math.min(22, camera.position.z + e.deltaY * .012)); }, { passive: true });
+        window.addEventListener('resize', function () { renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); });
+
+        /* Animation */
+        var lastTime = 0, startTime = 0, autoAngle = 0;
+        function animate(now) {
+            requestAnimationFrame(animate);
+            if (ctrl.paused) return;
+            if (startTime === 0) startTime = now;
+            var dt = Math.min((now - lastTime) / 1000, .1), t = (now - startTime) / 1000;
+            lastTime = now;
+            autoAngle += ctrl.rotateSpeed * dt * 60;
+            cloudGroup.rotation.y = autoAngle;
+            cloudGroup.rotation.x = Math.sin(autoAngle * .38) * .11;
+            lerped.x += (mouse.x - lerped.x) * .05; lerped.y += (mouse.y - lerped.y) * .05;
+            cloudGroup.rotation.y += lerped.x * ctrl.mouseSens * .015;
+            cloudGroup.rotation.x += -lerped.y * ctrl.mouseSens * .010;
+            for (var i = 0; i < sprites.length; i++) { var s = sprites[i]; s.material.opacity = .80 + .20 * Math.sin(t * s._breathSpd + s._phase); }
+            renderer.render(scene, camera);
+        }
+
+        /* =============================================================
+           NHAC NEN
+           Dung the <audio> de phat URL MP3 truc tiep.
+           Browser tu xu ly CORS, stream, va buffer.
+        ============================================================= */
+        var audio = document.getElementById('bg-audio');
+        var musicBar = document.getElementById('music-bar');
+        var vinyl = document.getElementById('vinyl');
+        var barTitle = document.getElementById('music-title');
+        var musicStatus = document.getElementById('music-status');
+        var isPlaying = false;
+
+        /* Trich ten file tu URL de hien thi */
+        function extractTitle(url) {
+            try {
+                var parts = url.split('/');
+                var name = parts[parts.length - 1].split('?')[0];
+                name = decodeURIComponent(name).replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+                return name || 'Nhac nen';
+            } catch (e) { return 'Nhac nen'; }
+        }
+
+        /* Cap nhat trang thai vinyl va nut play */
+        function syncPlayUI(playing) {
+            isPlaying = playing;
+            vinyl.className = playing ? 'playing' : '';
+            document.getElementById('bar-playpause').innerHTML = playing ? '&#9646;&#9646;' : '&#9654;';
+            document.getElementById('btn-music-play').innerHTML = playing ? '&#9646;&#9646; Pause' : '&#9654; Play';
+        }
+
+        /* Tai va phat nhac tu URL */
+        document.getElementById('btn-load-music').addEventListener('click', function () {
+            var url = document.getElementById('music-url').value.trim();
+            if (!url) { musicStatus.textContent = 'Vui long dan link MP3 vao o tren.'; musicStatus.className = 'music-status err'; return; }
+
+            musicStatus.textContent = 'Dang tai nhac...';
+            musicStatus.className = 'music-status';
+
+            /* Dung o am thanh, thay src, roi phat */
+            audio.pause();
+            audio.src = url;
+            audio.volume = parseFloat(document.getElementById('vol-slider').value);
+            audio.load();
+
+            /* Phat ngay sau khi co du du lieu */
+            var playPromise = audio.play();
+
+            if (playPromise !== undefined) {
+                playPromise.then(function () {
+                    /* Phat thanh cong */
+                    var title = extractTitle(url);
+                    barTitle.textContent = title;
+                    barTitle.className = '';
+                    musicStatus.textContent = 'Dang phat: ' + title;
+                    musicStatus.className = 'music-status ok';
+                    musicBar.classList.remove('hidden');
+                    syncPlayUI(true);
+                }).catch(function (err) {
+                    /* Loi CORS hoac URL sai */
+                    var msg = 'Khong the phat. ';
+                    if (err.name === 'NotSupportedError') msg += 'Dinh dang khong duoc ho tro.';
+                    else if (err.name === 'NotAllowedError') msg += 'Trinh duyet chan tu dong phat – bam Play o duoi.';
+                    else msg += 'Kiem tra lai link hoac CORS.';
+                    musicStatus.textContent = msg;
+                    musicStatus.className = 'music-status err';
+                    /* Van hien bar de user bam play thu cong */
+                    barTitle.textContent = extractTitle(url);
+                    barTitle.className = '';
+                    musicBar.classList.remove('hidden');
+                    syncPlayUI(false);
+                });
+            }
+        });
+
+        /* Su kien audio tu nhien dung (buffering, loi mang) */
+        audio.addEventListener('pause', function () { if (!audio.ended) syncPlayUI(false); });
+        audio.addEventListener('play', function () { syncPlayUI(true); });
+        audio.addEventListener('ended', function () { syncPlayUI(false); });
+        audio.addEventListener('error', function () {
+            musicStatus.textContent = 'Loi tai nhac. Link co the sai hoac bi chan CORS.';
+            musicStatus.className = 'music-status err';
+            syncPlayUI(false);
+        });
+        audio.addEventListener('waiting', function () { musicStatus.textContent = 'Dang buffer...'; musicStatus.className = 'music-status'; });
+        audio.addEventListener('playing', function () {
+            musicStatus.textContent = 'Dang phat: ' + (barTitle.textContent || 'Nhac nen');
+            musicStatus.className = 'music-status ok';
+        });
+
+        /* Play/Pause tren music bar */
+        document.getElementById('bar-playpause').addEventListener('click', function () {
+            if (!audio.src) return;
+            if (isPlaying) { audio.pause(); }
+            else { audio.play().catch(function () { }); }
+        });
+
+        /* Play/Pause trong panel */
+        document.getElementById('btn-music-play').addEventListener('click', function () {
+            if (!audio.src) { musicStatus.textContent = 'Dan link truoc roi bam Tai.'; musicStatus.className = 'music-status err'; return; }
+            if (isPlaying) { audio.pause(); }
+            else { audio.play().catch(function () { }); }
+        });
+
+        /* Stop */
+        document.getElementById('btn-music-stop').addEventListener('click', function () {
+            audio.pause();
+            audio.currentTime = 0;
+            syncPlayUI(false);
+            musicStatus.textContent = 'Da dung.';
+            musicStatus.className = 'music-status';
+        });
+
+        /* Am luong – vol-slider (tren music bar) */
+        document.getElementById('vol-slider').addEventListener('input', function () {
+            var v = parseFloat(this.value);
+            audio.volume = v;
+            /* Dong bo voi slider trong panel */
+            document.getElementById('vol-panel').value = Math.round(v * 100);
+            document.getElementById('v-vol').textContent = Math.round(v * 100);
+        });
+
+        /* Am luong – vol-panel (trong panel) */
+        document.getElementById('vol-panel').addEventListener('input', function () {
+            var v = parseInt(this.value, 10) / 100;
+            audio.volume = v;
+            document.getElementById('v-vol').textContent = this.value;
+            /* Dong bo voi slider tren bar */
+            document.getElementById('vol-slider').value = v;
+        });
+
+        /* =============================================================
+           TABS
+        ============================================================= */
+        var tabBtns = document.querySelectorAll('.tab-btn');
+        var tabPanes = document.querySelectorAll('.tab-pane');
+        for (var ti = 0; ti < tabBtns.length; ti++) {
+            (function (btn) {
+                btn.addEventListener('click', function () {
+                    var target = btn.getAttribute('data-tab');
+                    for (var j = 0; j < tabBtns.length; j++)  tabBtns[j].classList.remove('active');
+                    for (var k = 0; k < tabPanes.length; k++)  tabPanes[k].classList.remove('active');
+                    btn.classList.add('active');
+                    document.getElementById(target).classList.add('active');
+                });
+            }(tabBtns[ti]));
+        }
+
+        /* Toggle panel */
+        var panel = document.getElementById('panel');
+        document.getElementById('btn-toggle').addEventListener('click', function () { panel.classList.toggle('hidden'); });
+
+        /* =============================================================
+           CAI DAT SLIDERS
+        ============================================================= */
+        var slSize = document.getElementById('sl-size');
+        slSize.addEventListener('input', function () { ctrl.fontSize = parseInt(slSize.value, 10); document.getElementById('v-size').textContent = ctrl.fontSize; buildSprites(); });
+        var slSpeed = document.getElementById('sl-speed');
+        slSpeed.addEventListener('input', function () { document.getElementById('v-speed').textContent = slSpeed.value; ctrl.rotateSpeed = parseInt(slSpeed.value, 10) / 1000; });
+        var slMouse = document.getElementById('sl-mouse');
+        slMouse.addEventListener('input', function () { document.getElementById('v-mouse').textContent = slMouse.value; ctrl.mouseSens = parseInt(slMouse.value, 10) / 10; });
+        var btnPause = document.getElementById('btn-pause');
+        btnPause.addEventListener('click', function () {
+            ctrl.paused = !ctrl.paused;
+            btnPause.innerHTML = ctrl.paused ? '&#9654; Tiep' : '&#9208; Dung';
+            btnPause.classList.toggle('active', ctrl.paused);
+            if (!ctrl.paused) lastTime = performance.now();
+        });
+        document.getElementById('btn-reset').addEventListener('click', function () {
+            slSize.value = '34'; ctrl.fontSize = 34; document.getElementById('v-size').textContent = '34';
+            slSpeed.value = '5'; ctrl.rotateSpeed = .005; document.getElementById('v-speed').textContent = '5';
+            slMouse.value = '5'; ctrl.mouseSens = .5; document.getElementById('v-mouse').textContent = '5';
+            ctrl.paused = false; btnPause.innerHTML = '&#9208; Dung'; btnPause.classList.remove('active');
+            camera.position.z = 12; buildSprites();
+        });
+
+        /* =============================================================
+           BOOT
+        ============================================================= */
+        ensureFont().then(function () {
+            buildSprites();
+
+            /* === AUTOPLAY LOGIC ===
+               Trinh duyet hien dai chi cho phep autoplay khi audio bi MUTED.
+               Giai phap:
+                 1. Set src + muted=true → play() → luon thanh cong
+                 2. Hien overlay "Bam de bat dau"
+                 3. Khi user click lan dau → unmute → an overlay
+            */
+            var overlay = document.getElementById('unmute-overlay');
+            var hasUnmuted = false;
+
+            function startAutoplay() {
+                if (!DEFAULT_MUSIC_URL) return; /* Khong co nhac mac dinh */
+                audio.src = DEFAULT_MUSIC_URL;
+                audio.muted = true;
+                audio.volume = parseFloat(document.getElementById('vol-slider').value);
+                audio.load();
+
+                var p = audio.play();
+                if (p !== undefined) {
+                    p.then(function () {
+                        /* Muted autoplay thanh cong – cap nhat UI */
+                        var title = extractTitle(DEFAULT_MUSIC_URL);
+                        barTitle.textContent = title; barTitle.className = '';
+                        document.getElementById('music-url').value = DEFAULT_MUSIC_URL;
+                        musicBar.classList.remove('hidden');
+                        syncPlayUI(true);
+                        /* Nhac thuc su muted – cho user click de unmute */
+                        musicStatus.textContent = 'Sap phat: ' + title + ' (bam man hinh de bat am)';
+                        musicStatus.className = 'music-status';
+                    }).catch(function () {
+                        /* Browser chan ca muted autoplay – an overlay, cho user click */
+                        if (overlay) overlay.classList.add('gone');
+                    });
+                }
+            }
+
+            function doUnmute() {
+                if (hasUnmuted) return;
+                hasUnmuted = true;
+
+                /* An overlay voi hieu ung fade */
+                if (overlay) { overlay.classList.add('gone'); }
+
+                /* Bo mute */
+                audio.muted = false;
+
+                /* Neu chua phat duoc (browser chan muted) → thu phat lai */
+                if (audio.paused && audio.src) {
+                    audio.play().then(function () {
+                        syncPlayUI(true);
+                        var title = extractTitle(audio.src);
+                        musicStatus.textContent = 'Dang phat: ' + title;
+                        musicStatus.className = 'music-status ok';
+                        musicBar.classList.remove('hidden');
+                        barTitle.textContent = title; barTitle.className = '';
+                    }).catch(function () { });
+                } else {
+                    /* Da phat muted → chi can bo mute */
+                    if (isPlaying) {
+                        musicStatus.textContent = 'Dang phat: ' + (barTitle.textContent || 'Nhac nen');
+                        musicStatus.className = 'music-status ok';
+                    }
+                }
+            }
+
+            /* Bat su kien click toan man hinh lan dau */
+            document.addEventListener('click', function onFirstClick() {
+                doUnmute();
+                document.removeEventListener('click', onFirstClick);
+            });
+            /* Touch cho mobile */
+            document.addEventListener('touchend', function onFirstTouch() {
+                doUnmute();
+                document.removeEventListener('touchend', onFirstTouch);
+            });
+
+            /* Bat dau autoplay */
+            startAutoplay();
+
+            var ld = document.getElementById('loading');
+            ld.style.opacity = '0';
+            setTimeout(function () { if (ld.parentNode) ld.parentNode.removeChild(ld); }, 700);
+            requestAnimationFrame(animate);
+        });
+    </script>
+</body>
+
+</html>
